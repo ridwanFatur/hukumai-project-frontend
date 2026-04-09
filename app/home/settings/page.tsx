@@ -4,7 +4,7 @@ import AppShell from "@/components/AppShell";
 
 export default function SettingsPage() {
   return (
-    <AppShell activeMenu="settings" syncOnMount={false}>
+    <AppShell activeMenu="settings" syncOnMount={false} hideSidebarOnDesktop>
       <SettingsContent />
     </AppShell>
   );

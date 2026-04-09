@@ -45,6 +45,8 @@ interface SidebarProps {
 	onClose: () => void;
 	user: { name?: string; email?: string } | null;
 	onLogout: () => void;
+	/** Hide the sidebar on desktop (md+) while keeping mobile overlay behaviour */
+	hideOnDesktop?: boolean;
 }
 
 export default function Sidebar({
@@ -54,6 +56,7 @@ export default function Sidebar({
 	onClose,
 	user,
 	onLogout,
+	hideOnDesktop = false,
 }: SidebarProps) {
 	return (
 		<>
@@ -72,7 +75,9 @@ export default function Sidebar({
 					"fixed inset-y-0 left-0 z-50 w-64 flex flex-col",
 					"bg-linear-to-b from-blue-950 to-blue-900",
 					"transition-transform duration-300 ease-in-out",
-					"md:relative md:translate-x-0 md:shrink-0",
+					hideOnDesktop
+						? "md:hidden"
+						: "md:relative md:translate-x-0 md:shrink-0",
 					isOpen ? "translate-x-0" : "-translate-x-full",
 				].join(" ")}
 			>
@@ -100,6 +105,7 @@ export default function Sidebar({
 							key={item.id}
 							item={item}
 							active={activeMenu === item.id}
+							href={`/home?view=${item.id}`}
 							onClick={() => onMenuSelect(item.id)}
 						/>
 					))}
@@ -112,6 +118,7 @@ export default function Sidebar({
 							key={item.id}
 							item={item}
 							active={activeMenu === item.id}
+							href={`/home/${item.id}`}
 							onClick={() => onMenuSelect(item.id)}
 						/>
 					))}
@@ -152,18 +159,24 @@ export default function Sidebar({
 function NavButton({
 	item,
 	active,
+	href,
 	onClick,
 }: {
 	item: { label: string; icon: React.ReactNode };
 	active: boolean;
+	href: string;
 	onClick: () => void;
 }) {
 	return (
-		<button
-			onClick={onClick}
+		<a
+			href={href}
+			onClick={(e) => {
+				e.preventDefault();
+				onClick();
+			}}
 			className={[
 				"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left",
-				"transition-colors duration-150",
+				"transition-colors duration-150 cursor-pointer",
 				active
 					? "bg-white/15 text-white font-medium shadow-inner"
 					: "text-blue-100 hover:bg-white/10 hover:text-white",
@@ -171,7 +184,7 @@ function NavButton({
 		>
 			<span className="w-5 h-5 shrink-0">{item.icon}</span>
 			<span className="text-sm leading-snug">{item.label}</span>
-		</button>
+		</a>
 	);
 }
 

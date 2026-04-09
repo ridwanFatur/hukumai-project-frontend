@@ -4,7 +4,7 @@ import AppShell from "@/components/AppShell";
 
 export default function BillingPage() {
   return (
-    <AppShell activeMenu="billing" syncOnMount={false}>
+    <AppShell activeMenu="billing" syncOnMount={false} hideSidebarOnDesktop>
       <BillingContent />
     </AppShell>
   );

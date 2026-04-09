@@ -4,7 +4,7 @@ import AppShell from "@/components/AppShell";
 
 export default function ProfilePage() {
   return (
-    <AppShell activeMenu="profile" syncOnMount={false}>
+    <AppShell activeMenu="profile" syncOnMount={false} hideSidebarOnDesktop>
       <ProfileContent />
     </AppShell>
   );

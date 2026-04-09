@@ -14,6 +14,8 @@ interface AppShellProps {
 	/** Pass true on the entry page (/home) to run loginUser sync before getUser */
 	syncOnMount?: boolean;
 	pageTitle?: string;
+	/** Hide sidebar on desktop (md+) but keep it accessible on mobile */
+	hideSidebarOnDesktop?: boolean;
 }
 
 export default function AppShell({
@@ -21,6 +23,7 @@ export default function AppShell({
 	children,
 	syncOnMount = false,
 	pageTitle,
+	hideSidebarOnDesktop = false,
 }: AppShellProps) {
 	const { getToken } = useAuth();
 	const { signOut } = useClerk();
@@ -86,6 +89,7 @@ export default function AppShell({
 				onClose={() => setSidebarOpen(false)}
 				user={user}
 				onLogout={() => setShowLogout(true)}
+				hideOnDesktop={hideSidebarOnDesktop}
 			/>
 
 			{/* Main column */}
