@@ -1,7 +1,14 @@
 import { User } from "@/types/user";
+import { ChatSession, ChatMessage } from "@/types/chat";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const SESSION_TOKEN_KEY = "hukumai_session_token";
+
+export function getWebSocketURL(): string {
+  const base = API_URL.replace(/^http/, "ws");
+  const token = getSessionToken();
+  return `${base}/ws?token=${token ?? ""}`;
+}
 
 export function saveSessionToken(token: string): void {
   if (typeof window !== "undefined") {
@@ -63,4 +70,55 @@ export async function getUser(): Promise<User> {
 
   const data = await response.json();
   return data.user;
+}
+
+// ── Chat API ─────────────────────────────────────────────────────────────────
+
+function authHeaders(): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${getSessionToken() ?? ""}`,
+  };
+}
+
+export async function createChatSession(): Promise<ChatSession> {
+  const response = await fetch(`${API_URL}/api/chat/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!response.ok) throw new Error("Gagal membuat sesi chat");
+  const data = await response.json();
+  return data.session;
+}
+
+export async function getChatSessions(): Promise<ChatSession[]> {
+  const response = await fetch(`${API_URL}/api/chat/sessions`, {
+    headers: authHeaders(),
+  });
+  if (!response.ok) throw new Error("Gagal memuat sesi chat");
+  const data = await response.json();
+  return data.sessions ?? [];
+}
+
+export async function getChatMessages(sessionId: number): Promise<ChatMessage[]> {
+  const response = await fetch(`${API_URL}/api/chat/sessions/${sessionId}/messages`, {
+    headers: authHeaders(),
+  });
+  if (!response.ok) throw new Error("Gagal memuat pesan");
+  const data = await response.json();
+  return data.messages ?? [];
+}
+
+export async function sendChatMessage(
+  sessionId: number,
+  content: string
+): Promise<ChatMessage> {
+  const response = await fetch(`${API_URL}/api/chat/sessions/${sessionId}/messages`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) throw new Error("Gagal mengirim pesan");
+  const data = await response.json();
+  return data.message;
 }

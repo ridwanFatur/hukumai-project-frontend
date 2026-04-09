@@ -1,6 +1,14 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { MenuId } from "./Sidebar";
+import {
+  createChatSession,
+  getChatMessages,
+  sendChatMessage,
+  getWebSocketURL,
+} from "@/services/api";
+import { ChatMessage } from "@/types/chat";
 
 interface PlaceholderViewProps {
   menuId: MenuId;
@@ -70,14 +78,147 @@ function SecondaryButton({ label }: { label: string }) {
 // ── Chatbot View ─────────────────────────────────────────────────────────────
 
 function ChatbotView() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isWaitingReply, setIsWaitingReply] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // Initialise session + WebSocket on mount
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let cancelled = false;
+
+    async function init() {
+      try {
+        const session = await createChatSession();
+        if (cancelled) return;
+        setSessionId(session.id);
+
+        const existing = await getChatMessages(session.id);
+        if (cancelled) return;
+        setMessages(existing);
+
+        const wsUrl = getWebSocketURL();
+        ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => { if (!cancelled) setWsConnected(true); };
+        ws.onclose = () => { if (!cancelled) setWsConnected(false); };
+        ws.onerror = () => { if (!cancelled) setWsConnected(false); };
+
+        ws.onmessage = (event: MessageEvent) => {
+          if (cancelled) return;
+          try {
+            const payload = JSON.parse(event.data as string);
+            if (payload.type === "chat_message") {
+              setMessages((prev) => [...prev, payload.data as ChatMessage]);
+              setIsWaitingReply(false);
+            }
+          } catch {
+            // ignore malformed frames
+          }
+        };
+      } catch {
+        if (!cancelled) setInitError("Gagal menginisialisasi chat. Silakan muat ulang halaman.");
+      }
+    }
+
+    init();
+
+    return () => {
+      cancelled = true;
+      ws?.close();
+    };
+  }, []);
+
+  // Auto-scroll to newest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isWaitingReply]);
+
+  const handleSend = async () => {
+    if (!input.trim() || sessionId === null || isSending) return;
+
+    const content = input.trim();
+    setInput("");
+    setIsSending(true);
+
+    try {
+      const userMsg = await sendChatMessage(sessionId, content);
+      setMessages((prev) => [...prev, userMsg]);
+      setIsWaitingReply(true);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          chat_session_id: sessionId,
+          role: "assistant",
+          content: "Gagal mengirim pesan. Silakan coba lagi.",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  if (initError) {
+    return (
+      <div className="flex flex-col" style={{ height: "calc(100vh - 120px)" }}>
+        <PageHeader
+          title="Chatbot Q&A Hukum"
+          subtitle="Tanyakan pertanyaan hukum Anda secara natural dan dapatkan jawaban yang akurat."
+        />
+        <Card className="flex items-center justify-center flex-1">
+          <p className="text-sm text-red-500">{initError}</p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 120px)" }}>
       <PageHeader
         title="Chatbot Q&A Hukum"
         subtitle="Tanyakan pertanyaan hukum Anda secara natural dan dapatkan jawaban yang akurat."
       />
+
       <Card className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-0">
+        {/* Connection status badge */}
+        <div className="flex items-center gap-2 mb-3 shrink-0">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+              wsConnected
+                ? "bg-green-50 text-green-700 border border-green-200"
+                : "bg-gray-100 text-gray-500 border border-gray-200"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                wsConnected ? "bg-green-500 animate-pulse" : "bg-gray-400"
+              }`}
+            />
+            {wsConnected ? "Terhubung" : "Menghubungkan..."}
+          </span>
+        </div>
+
+        {/* Message list */}
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-0 pr-1">
+          {/* Greeting bubble */}
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-white text-xs font-bold shadow-sm">
               AI
@@ -88,18 +229,72 @@ function ChatbotView() {
               </p>
             </div>
           </div>
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-400">Mulai percakapan baru di bawah...</p>
-          </div>
+
+          {messages.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-400">Mulai percakapan baru di bawah...</p>
+            </div>
+          )}
+
+          {messages.map((msg) =>
+            msg.role === "user" ? (
+              <div key={msg.id} className="flex gap-3 justify-end">
+                <div className="bg-blue-600 rounded-2xl rounded-tr-sm px-4 py-3 max-w-md">
+                  <p className="text-sm text-white">{msg.content}</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-gray-600 text-xs font-bold">
+                  U
+                </div>
+              </div>
+            ) : (
+              <div key={msg.id} className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-white text-xs font-bold shadow-sm">
+                  AI
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-md">
+                  <p className="text-sm text-gray-700">{msg.content}</p>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* Typing indicator while waiting for AI reply */}
+          {isWaitingReply && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-white text-xs font-bold shadow-sm">
+                AI
+              </div>
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-sm px-4 py-3">
+                <div className="flex gap-1 items-center h-4">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
         </div>
-        <div className="flex gap-2 border-t border-gray-100 pt-4">
+
+        {/* Input bar */}
+        <div className="flex gap-2 border-t border-gray-100 pt-4 shrink-0">
           <input
             type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Tulis pertanyaan hukum Anda di sini..."
-            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            readOnly
+            disabled={isSending || !wsConnected}
+            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          <PrimaryButton label="Kirim" />
+          <button
+            onClick={handleSend}
+            disabled={isSending || !input.trim() || !wsConnected}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+          >
+            {isSending ? "..." : "Kirim"}
+          </button>
         </div>
       </Card>
     </div>
