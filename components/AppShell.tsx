@@ -68,7 +68,7 @@ export default function AppShell({
 
 	if (loading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-[#f0f4ff]">
+			<div className="min-h-dvh flex items-center justify-center bg-[#f0f4ff]">
 				<div className="flex flex-col items-center gap-3">
 					<div className="w-9 h-9 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin" />
 					<p className="text-sm text-slate-400">Memuat...</p>

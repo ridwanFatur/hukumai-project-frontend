@@ -29,7 +29,7 @@ export default function RootLayout({
 				lang="id"
 				className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
 			>
-				<body className="min-h-full">{children}</body>
+				<body className="min-h-dvh">{children}</body>
 			</html>
 		</ClerkProvider>
 	);

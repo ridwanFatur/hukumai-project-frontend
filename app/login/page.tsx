@@ -27,7 +27,7 @@ export default function LoginPage() {
 	};
 
 	return (
-		<div className="min-h-screen flex">
+		<div className="min-h-dvh flex">
 			{/* ── Left panel (desktop only) ─────────────────────────────────────── */}
 			<div className="hidden lg:flex flex-col w-[55%] relative overflow-hidden bg-linear-to-br from-slate-950 via-blue-950 to-blue-900">
 				{/* Decorative orbs */}

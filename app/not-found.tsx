@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function NotFound() {
 	return (
-		<div className="min-h-screen bg-white flex flex-col px-6 py-10">
+		<div className="min-h-dvh bg-white flex flex-col px-6 py-10">
 
 			{/* Header logo */}
 			<div className="flex items-center gap-2 mb-10">
