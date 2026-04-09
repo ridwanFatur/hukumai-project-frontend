@@ -7,6 +7,8 @@ import {
   getChatMessages,
   sendChatMessage,
   getWebSocketURL,
+  uploadDocument,
+  UploadResult,
 } from "@/services/api";
 import { ChatMessage } from "@/types/chat";
 
@@ -352,7 +354,77 @@ function SearchView() {
 
 // ── Summary View ─────────────────────────────────────────────────────────────
 
+type UploadState =
+  | { status: "idle" }
+  | { status: "selected"; file: File }
+  | { status: "uploading"; file: File }
+  | { status: "success"; file: File; result: UploadResult }
+  | { status: "error"; message: string };
+
+const ACCEPTED_TYPES = ["application/pdf", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+
 function SummaryView() {
+  const [state, setState] = useState<UploadState>({ status: "idle" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  function validateFile(file: File): string | null {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      return "Tipe file tidak didukung. Gunakan PDF atau DOCX.";
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      return "Ukuran file melebihi batas maksimum 50MB.";
+    }
+    return null;
+  }
+
+  function selectFile(file: File) {
+    const err = validateFile(file);
+    if (err) {
+      setState({ status: "error", message: err });
+      return;
+    }
+    setState({ status: "selected", file });
+  }
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) selectFile(file);
+    e.target.value = "";
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) selectFile(file);
+  }
+
+  async function handleUpload() {
+    if (state.status !== "selected") return;
+    const { file } = state;
+    setState({ status: "uploading", file });
+    try {
+      const result = await uploadDocument(file);
+      setState({ status: "success", file, result });
+    } catch (err: unknown) {
+      setState({
+        status: "error",
+        message: err instanceof Error ? err.message : "Gagal mengunggah dokumen",
+      });
+    }
+  }
+
+  function handleReset() {
+    setState({ status: "idle" });
+  }
+
+  const isUploading = state.status === "uploading";
+  const selectedFile = state.status === "selected" || state.status === "uploading"
+    ? state.file : state.status === "success" ? state.file : null;
+
   return (
     <div>
       <PageHeader
@@ -360,27 +432,144 @@ function SummaryView() {
         subtitle="Unggah dokumen hukum Anda dan dapatkan ringkasan yang komprehensif."
       />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Upload card */}
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Unggah Dokumen</h3>
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center space-y-3">
+
+          {/* Drop zone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+            className={[
+              "border-2 border-dashed rounded-xl p-8 text-center space-y-3 transition-colors",
+              dragOver ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-300 cursor-pointer",
+              isUploading ? "pointer-events-none opacity-60" : "",
+            ].join(" ")}
+          >
             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
               <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-700">Seret & lepas dokumen di sini</p>
-              <p className="text-xs text-gray-400 mt-1">PDF, DOCX hingga 50MB</p>
+            {selectedFile ? (
+              <div>
+                <p className="text-sm font-medium text-blue-700 truncate max-w-xs mx-auto">{selectedFile.name}</p>
+                <p className="text-xs text-gray-400 mt-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm font-medium text-gray-700">Seret &amp; lepas dokumen di sini</p>
+                <p className="text-xs text-gray-400 mt-1">PDF, DOCX hingga 50MB</p>
+              </div>
+            )}
+            <p className="text-xs text-blue-500 font-medium">Klik untuk memilih file</p>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            onChange={handleInputChange}
+          />
+
+          {/* Error message */}
+          {state.status === "error" && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {state.message}
             </div>
-            <SecondaryButton label="Pilih File" />
+          )}
+
+          {/* Action buttons */}
+          <div className="mt-4 flex gap-2">
+            {(state.status === "selected") && (
+              <>
+                <button
+                  onClick={handleUpload}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+                >
+                  Unggah Dokumen
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+              </>
+            )}
+            {state.status === "uploading" && (
+              <button disabled className="px-4 py-2 bg-blue-400 text-white text-sm font-semibold rounded-lg cursor-not-allowed flex items-center gap-2">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Mengunggah...
+              </button>
+            )}
+            {(state.status === "success" || state.status === "error") && (
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 transition-colors"
+              >
+                Unggah File Lain
+              </button>
+            )}
           </div>
         </Card>
+
+        {/* Result card */}
         <Card>
           <h3 className="font-semibold text-gray-800 mb-4">Hasil Ringkasan</h3>
-          <div className="space-y-3">
-            <PlaceholderBlock height="h-48" />
-            <p className="text-xs text-gray-400 text-center">Ringkasan akan muncul di sini setelah dokumen diproses</p>
-          </div>
+          {state.status === "success" ? (
+            <div className="space-y-4">
+              {/* Upload success banner */}
+              <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <svg className="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-green-800">Dokumen berhasil diunggah</p>
+                  <p className="text-xs text-green-700 truncate mt-0.5">{state.result.filename}</p>
+                </div>
+              </div>
+
+              {/* File details */}
+              <div className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-3">
+                <p><span className="font-medium text-gray-700">Kunci:</span> {state.result.file_key}</p>
+                <p><span className="font-medium text-gray-700">Ukuran:</span> {(state.result.size / 1024).toFixed(1)} KB</p>
+                <p>
+                  <span className="font-medium text-gray-700">URL Publik:</span>{" "}
+                  <a
+                    href={state.result.public_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline break-all"
+                  >
+                    {state.result.public_url}
+                  </a>
+                </p>
+              </div>
+
+              {/* Summary placeholder — wire to AI when ready */}
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-2">Ringkasan Dokumen</p>
+                <PlaceholderBlock height="h-32" />
+                <p className="text-xs text-gray-400 text-center mt-2">
+                  Ringkasan otomatis akan tersedia setelah integrasi AI selesai
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <PlaceholderBlock height="h-48" />
+              <p className="text-xs text-gray-400 text-center">
+                Ringkasan akan muncul di sini setelah dokumen diproses
+              </p>
+            </div>
+          )}
         </Card>
       </div>
     </div>

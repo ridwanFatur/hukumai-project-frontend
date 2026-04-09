@@ -124,6 +124,42 @@ export async function sendChatMessage(
   return data.message;
 }
 
+// ── Upload API ────────────────────────────────────────────────────────────────
+
+export interface UploadResult {
+  file_key: string;
+  public_url: string;
+  filename: string;
+  size: number;
+  mime_type: string;
+}
+
+export async function uploadDocument(file: File): Promise<UploadResult> {
+  const token = getSessionToken();
+  if (!token) throw new Error("Sesi tidak ditemukan, silakan login kembali");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}/api/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (response.status === 401) {
+    clearSessionToken();
+    throw new Error("Sesi telah berakhir, silakan login kembali");
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Gagal mengunggah dokumen");
+  }
+
+  return response.json();
+}
+
 // ── Subscription API ──────────────────────────────────────────────────────────
 
 export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
