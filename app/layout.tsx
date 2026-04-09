@@ -4,33 +4,33 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+	variable: "--font-geist-sans",
+	subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+	variable: "--font-geist-mono",
+	subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Hukum AI",
-  description: "Platform AI untuk kebutuhan hukum",
+	title: "Hukum AI",
+	description: "Platform AI untuk kebutuhan hukum",
 };
 
 export default function RootLayout({
-  children,
+	children,
 }: Readonly<{
-  children: React.ReactNode;
+	children: React.ReactNode;
 }>) {
-  return (
-    <ClerkProvider>
-      <html
-        lang="id"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      >
-        <body className="min-h-full">{children}</body>
-      </html>
-    </ClerkProvider>
-  );
+	return (
+		<ClerkProvider>
+			<html
+				lang="id"
+				className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
+			>
+				<body className="min-h-full">{children}</body>
+			</html>
+		</ClerkProvider>
+	);
 }

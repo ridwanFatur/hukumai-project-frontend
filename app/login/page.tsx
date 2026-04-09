@@ -55,11 +55,6 @@ export default function LoginPage() {
 
 					{/* Hero text */}
 					<div className="mt-auto mb-12">
-						<div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
-							<span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-							<span className="text-xs text-blue-100 font-medium">Platform Hukum AI #1 di Indonesia</span>
-						</div>
-
 						<h1 className="text-5xl font-extrabold text-white leading-tight mb-4">
 							Solusi Hukum
 							<br />
