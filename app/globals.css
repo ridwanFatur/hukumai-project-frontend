@@ -1,57 +1,65 @@
 @import "tailwindcss";
 
-/* ── Elegant custom scrollbar ─────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
+/* ──────────────────────────────────────────────── */
+/* Base layer to prevent Tailwind reset overrides   */
+/* ──────────────────────────────────────────────── */
+@layer base {
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+	/* ── Elegant custom scrollbar (Chrome, Edge, Safari) ─────────────── */
+	::-webkit-scrollbar {
+		width: 5px;
+		height: 5px;
+	}
 
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 100vw;
-}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+	::-webkit-scrollbar-thumb {
+		background: #cbd5e1;
+		/* slate-300 */
+		border-radius: 100vw;
+	}
 
-/* Sidebar scrollbar (on dark background) */
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-}
+	::-webkit-scrollbar-thumb:hover {
+		background: #94a3b8;
+		/* slate-400 */
+	}
 
-.sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.32);
-}
+	/* Sidebar scrollbar variant (white thumb on dark background) */
+	.sidebar-scroll::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.18);
+	}
 
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
+	.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.32);
+	}
 
-/* ── Cursor pointer for all interactive elements ──────────────────────────── */
-button,
-a,
-[role="button"],
-select,
-label,
-input[type="checkbox"],
-input[type="radio"],
-input[type="submit"],
-input[type="button"],
-input[type="range"],
-summary {
-  cursor: pointer;
-}
+	/* ── Firefox scrollbar support ───────────────────────────────────── */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: #cbd5e1 transparent;
+	}
 
-/* ── Base typography ──────────────────────────────────────────────────────── */
-body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  background-color: #f0f4ff;
-  color: #1e293b;
+	/* ── Force pointer cursor for all interactive elements ───────────── */
+	button,
+	a,
+	[role="button"],
+	select,
+	label,
+	input[type="checkbox"],
+	input[type="radio"],
+	input[type="submit"],
+	input[type="button"],
+	input[type="range"],
+	summary {
+		cursor: pointer;
+	}
+
+	/* ── Base typography & layout ───────────────────────────────────── */
+	body {
+		font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+		background-color: #f0f4ff;
+		color: #1e293b;
+	}
 }
