@@ -1,5 +1,6 @@
 import { User } from "@/types/user";
 import { ChatSession, ChatMessage } from "@/types/chat";
+import { SubscriptionPlan, Subscription } from "@/types/subscription";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const SESSION_TOKEN_KEY = "hukumai_session_token";
@@ -121,4 +122,44 @@ export async function sendChatMessage(
   if (!response.ok) throw new Error("Gagal mengirim pesan");
   const data = await response.json();
   return data.message;
+}
+
+// ── Subscription API ──────────────────────────────────────────────────────────
+
+export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+  const response = await fetch(`${API_URL}/api/subscriptions/plans`);
+  if (!response.ok) throw new Error("Gagal mengambil data paket langganan");
+  const data = await response.json();
+  return data.plans ?? [];
+}
+
+export async function getSubscriptionStatus(): Promise<Subscription | null> {
+  const response = await fetch(`${API_URL}/api/subscriptions/status`, {
+    headers: authHeaders(),
+  });
+  if (response.status === 401) {
+    clearSessionToken();
+    throw new Error("Sesi telah berakhir, silakan login kembali");
+  }
+  if (!response.ok) throw new Error("Gagal mengambil status langganan");
+  const data = await response.json();
+  return data.subscription ?? null;
+}
+
+export async function createCheckoutSession(
+  planId: number,
+  successUrl: string,
+  cancelUrl: string
+): Promise<string> {
+  const response = await fetch(`${API_URL}/api/subscriptions/checkout`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ plan_id: planId, success_url: successUrl, cancel_url: cancelUrl }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Gagal membuat sesi pembayaran");
+  }
+  const data = await response.json();
+  return data.checkout_url;
 }
