@@ -78,7 +78,7 @@ export default function AppShell({
 	}
 
 	return (
-		<div className="flex h-screen overflow-hidden bg-[#f0f4ff]">
+		<div className="flex h-dvh overflow-hidden bg-[#f0f4ff]">
 			<Sidebar
 				activeMenu={activeMenu}
 				onMenuSelect={handleMenuSelect}
