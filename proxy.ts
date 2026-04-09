@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher(["/login(.*)", "/sso-callback(.*)"]);
 
-export default clerkMiddleware(async (auth, request) => {
+export const proxy = clerkMiddleware(async (auth, request) => {
   const { userId } = await auth();
   const url = request.nextUrl.clone();
 
